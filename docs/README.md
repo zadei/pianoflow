@@ -17,31 +17,49 @@ A piano learning app for acoustic piano players — no MIDI required. Upload she
 
 ---
 
-## Prerequisites
+## Quick Start (pre-built release)
+
+1. Download `PianoFlow-win64.zip` from the [Releases](../../releases) page
+2. Extract the zip anywhere
+3. Install **Java 17+** if you want image/PDF scanning — [Adoptium](https://adoptium.net) *(MusicXML uploads work without Java)*
+4. Double-click `PianoFlow.exe`
+5. Your browser opens automatically at http://localhost:8000
+
+No Python or pip required — everything else is bundled.
+
+---
+
+## Running from Source
+
+### Prerequisites
 
 | Requirement | Version | Notes |
 |---|---|---|
 | Python | 3.11+ | |
-| Java JRE | 17+ | Required by Audiveris |
-| Audiveris | 5.x | OMR engine — [install separately](https://github.com/Audiveris/audiveris), must be in `PATH` |
-| Poppler | latest | Required for PDF support — Windows: `conda install poppler` or add binaries to `PATH` |
+| Java JRE | 17+ | Required for image/PDF OCR (Audiveris) — MusicXML works without it |
 
----
+Audiveris and Poppler are **bundled** in `dep/` — no separate install needed.
 
-## Installation & Setup
+### Setup
 
 ```bash
-cd backend
-pip install -r requirements.txt
-```
-
-### Start the server
-
-```bash
-python main.py
+# Windows — installs deps and starts the server
+start.bat
 ```
 
 App runs at **http://127.0.0.1:8000**
+
+---
+
+## Building a Release
+
+Requires Python + PyInstaller (installed automatically if missing).
+
+```bash
+build_release.bat
+```
+
+Produces `dist\PianoFlow\` — a self-contained folder with no Python dependency. Zip it and upload as a GitHub Release asset.
 
 ---
 
@@ -101,8 +119,14 @@ piano/
 │       ├── pitch.js         # Pitch detection manager (main thread)
 │       ├── particles.js     # Particle system for hit effects
 │       └── audio.js         # Microphone setup and audio pipeline
-└── docs/
-    └── README.md
+├── dep/
+│   ├── audiveris/           # Bundled Audiveris OMR engine (Java)
+│   └── poppler/             # Bundled Poppler binaries (PDF support)
+├── docs/
+│   └── README.md
+├── start.bat                # Run from source (requires Python)
+├── build_release.bat        # Build self-contained release folder
+└── pianoflow.spec           # PyInstaller spec
 ```
 
 ---

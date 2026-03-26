@@ -5,11 +5,43 @@ import json
 import logging
 import os
 import shutil
+import sys
 import tempfile
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+def _frozen_base() -> Path:
+    """Resource base: _MEIPASS when frozen (PyInstaller), project root in dev."""
+    if getattr(sys, 'frozen', False):
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parent.parent
+
+
+def _backend_resource(relative: str) -> Path:
+    """Path to a resource that lives in backend/ (dev) or _MEIPASS root (frozen)."""
+    if getattr(sys, 'frozen', False):
+        return Path(sys._MEIPASS) / relative
+    return Path(__file__).parent / relative
+
+
+def _data_dir() -> Path:
+    """Writable data directory: next to exe when frozen, backend/ in dev."""
+    if getattr(sys, 'frozen', False):
+        return Path(sys.executable).parent
+    return Path(__file__).parent
+
+
+# When frozen, prepend bundled dep/ binaries (Audiveris + Poppler) to PATH
+if getattr(sys, 'frozen', False):
+    _dep = Path(sys.executable).parent / 'dep'
+    os.environ['PATH'] = (
+        str(_dep / 'audiveris' / 'bin') + os.pathsep +
+        str(_dep / 'poppler' / 'Library' / 'bin') + os.pathsep +
+        os.environ.get('PATH', '')
+    )
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -24,7 +56,7 @@ logger = logging.getLogger(__name__)
 UPLOAD_DIR = Path(tempfile.gettempdir()) / "pianoflow_uploads"
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".xml", ".mxl", ".musicxml"}
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
-LIBRARY_FILE = Path(__file__).parent / "library.json"
+LIBRARY_FILE = _data_dir() / "library.json"
 
 # In-memory job store (single-user local app, no persistence needed)
 jobs: dict[str, dict] = {}
@@ -61,7 +93,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="PianoFlow", version="1.0.0", lifespan=lifespan)
 
-FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+FRONTEND_DIR = _frozen_base() / "frontend"
 
 
 @app.post("/api/upload", response_model=UploadResponse)
@@ -224,7 +256,7 @@ async def delete_library_entry(entry_id: str):
 @app.get("/api/demo")
 async def get_demo():
     """Load the bundled Ode to Joy demo — no upload required."""
-    demo_path = Path(__file__).parent / "demo" / "ode_to_joy.xml"
+    demo_path = _backend_resource("demo") / "ode_to_joy.xml"
     if not demo_path.exists():
         raise HTTPException(404, "Demo file not found")
     try:
@@ -246,7 +278,7 @@ app.mount("/css", StaticFiles(directory=str(FRONTEND_DIR / "css")), name="css")
 app.mount("/js", StaticFiles(directory=str(FRONTEND_DIR / "js")), name="js")
 
 # Serve Basic Pitch model files for the Web Worker
-_BP_MODEL_DIR = Path(__file__).resolve().parent.parent / "node_modules" / "@spotify" / "basic-pitch" / "model"
+_BP_MODEL_DIR = _frozen_base() / "node_modules" / "@spotify" / "basic-pitch" / "model"
 if _BP_MODEL_DIR.exists():
     app.mount("/model", StaticFiles(directory=str(_BP_MODEL_DIR)), name="basic-pitch-model")
 
@@ -258,5 +290,14 @@ async def serve_index():
 
 
 if __name__ == "__main__":
+    import threading
     import uvicorn
+    import webbrowser
+
+    def _open_browser():
+        import time
+        time.sleep(2)
+        webbrowser.open("http://localhost:8000")
+
+    threading.Thread(target=_open_browser, daemon=True).start()
     uvicorn.run(app, host="127.0.0.1", port=8000)
