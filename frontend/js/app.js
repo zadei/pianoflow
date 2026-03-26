@@ -67,6 +67,7 @@
     const synth = new SynthPlayer();
     let micActive = false;
     let listenActive = false;
+    let prevPauseFrozen = false;
 
     // Timing window for note hits (in beats)
     const HIT_WINDOW_BEATS = 0.5;
@@ -305,10 +306,29 @@
             state.playing = false;
             playBtn.innerHTML = '&#9654;';
         } else {
+            // Listen mode is incompatible with practice/pause modes — disable them
+            if (state.practiceMode) {
+                practiceModeCheckbox.checked = false;
+                state.practiceMode = false;
+                state.practiceTargetNotes = null;
+                state.practiceHintTimer = 0;
+                loopControls.style.display = 'none';
+                loopEnabledCheckbox.checked = false;
+                state.loopEnabled = false;
+                loopRangeInputs.style.display = 'none';
+            }
+            if (state.pauseMode) {
+                pauseModeCheckbox.checked = false;
+                state.pauseMode = false;
+            }
+            state.pauseFrozen = false;
+            prevPauseFrozen = false;
+
             // Reset to start
             state.currentBeat = -2;
             state.notes.forEach(n => { n._hit = false; n._missed = false; n._playActivated = false; });
             state.streak = 0;
+            state.accuracy = { hits: 0, misses: 0 };
             state.playing = true;
             playBtn.innerHTML = '&#10074;&#10074;';
             listenActive = true;
@@ -318,6 +338,8 @@
             synth.play(state.notes, state.tempoBPM, state.tempoMultiplier, state.currentBeat, () => {
                 listenActive = false;
                 listenBtn.classList.remove('active');
+                state.playing = false;
+                playBtn.innerHTML = '&#9654;';
             });
         }
     });
@@ -327,6 +349,19 @@
     tempoSlider.addEventListener('input', () => {
         state.tempoMultiplier = parseFloat(tempoSlider.value);
         updateTempoDisplay();
+        // Resync synth to new tempo if listen mode is active
+        if (listenActive) {
+            synth.stop();
+            synth.play(state.notes, state.tempoBPM, state.tempoMultiplier, state.currentBeat, () => {
+                listenActive = false;
+                listenBtn.classList.remove('active');
+                state.playing = false;
+                playBtn.innerHTML = '&#9654;';
+            });
+        }
+        if (metronomeToggle.checked) {
+            audioMgr.startMetronome(state.tempoBPM, state.tempoMultiplier);
+        }
     });
 
     function updateTempoDisplay() {
@@ -337,12 +372,45 @@
     pauseModeCheckbox.addEventListener('change', () => {
         state.pauseMode = pauseModeCheckbox.checked;
         state.pauseFrozen = false;
+        prevPauseFrozen = false;
+        // Stop listen mode — it can't coexist with pause mode
+        if (state.pauseMode && listenActive) {
+            synth.stop();
+            listenActive = false;
+            listenBtn.classList.remove('active');
+            state.playing = false;
+            playBtn.innerHTML = '&#9654;';
+        }
     });
 
     practiceModeCheckbox.addEventListener('change', () => {
-        state.practiceMode = practiceModeCheckbox.checked;
+        const enabling = practiceModeCheckbox.checked;
+        state.practiceMode = enabling;
         state.practiceTargetNotes = null;
         state.practiceHintTimer = 0;
+        state.pauseFrozen = false;
+        prevPauseFrozen = false;
+
+        // Stop listen mode — it can't coexist with practice mode
+        if (listenActive) {
+            synth.stop();
+            listenActive = false;
+            listenBtn.classList.remove('active');
+            state.playing = false;
+            playBtn.innerHTML = '&#9654;';
+        }
+
+        // Enabling practice mid-play would start freezing on already-passed notes;
+        // reset to the beginning for a clean start instead.
+        if (enabling && state.playing && state.notes) {
+            state.playing = false;
+            state.currentBeat = -2;
+            state.notes.forEach(n => { n._hit = false; n._missed = false; n._playActivated = false; });
+            state.streak = 0;
+            state.accuracy = { hits: 0, misses: 0 };
+            playBtn.innerHTML = '&#9654;';
+        }
+
         loopControls.style.display = state.practiceMode ? '' : 'none';
         if (!state.practiceMode) {
             loopEnabledCheckbox.checked = false;
@@ -555,6 +623,21 @@
                 }
             }
 
+            // Sync synth playback with freeze state (practice/pause mode)
+            if (listenActive) {
+                if (state.pauseFrozen && !prevPauseFrozen) {
+                    synth.stop();
+                } else if (!state.pauseFrozen && prevPauseFrozen && state.notes) {
+                    synth.play(state.notes, state.tempoBPM, state.tempoMultiplier, state.currentBeat, () => {
+                        listenActive = false;
+                        listenBtn.classList.remove('active');
+                        state.playing = false;
+                        playBtn.innerHTML = '&#9654;';
+                    });
+                }
+            }
+            prevPauseFrozen = state.pauseFrozen;
+
             // Advance beat if not frozen
             if (!state.pauseFrozen) {
                 const beatsPerSecond = (state.tempoBPM * state.tempoMultiplier) / 60;
@@ -576,6 +659,16 @@
                     state.practiceTargetNotes = null;
                     state.practiceHintTimer = 0;
                     state.pauseFrozen = false;
+                    prevPauseFrozen = false;
+                    if (listenActive) {
+                        synth.stop();
+                        synth.play(state.notes, state.tempoBPM, state.tempoMultiplier, loopStartBeat, () => {
+                            listenActive = false;
+                            listenBtn.classList.remove('active');
+                            state.playing = false;
+                            playBtn.innerHTML = '&#9654;';
+                        });
+                    }
                 }
             }
 
