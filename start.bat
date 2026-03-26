@@ -2,10 +2,6 @@
 setlocal
 
 set "ROOT=%~dp0"
-set "VENV=%ROOT%.venv"
-set "PYTHON=%VENV%\Scripts\python.exe"
-set "PIP=%VENV%\Scripts\pip.exe"
-set "UVICORN=%VENV%\Scripts\uvicorn.exe"
 set "PORT=8000"
 
 echo PianoFlow Launcher
@@ -32,20 +28,9 @@ if errorlevel 1 (
     echo.
 )
 
-:: Create venv if it doesn't exist
-if not exist "%VENV%\Scripts\activate.bat" (
-    echo Creating virtual environment...
-    python -m venv "%VENV%"
-    if errorlevel 1 (
-        echo ERROR: Failed to create virtual environment.
-        pause
-        exit /b 1
-    )
-)
-
 :: Install/update dependencies
 echo Installing dependencies...
-"%PIP%" install -q -r "%ROOT%backend\requirements.txt"
+pip install -q -r "%ROOT%backend\requirements.txt"
 if errorlevel 1 (
     echo ERROR: pip install failed. Check your internet connection.
     pause
@@ -62,6 +47,6 @@ echo.
 
 :: Start server
 cd /d "%ROOT%backend"
-"%UVICORN%" main:app --host 127.0.0.1 --port %PORT%
+uvicorn main:app --host 127.0.0.1 --port %PORT%
 
 endlocal
