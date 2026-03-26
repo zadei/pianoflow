@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@spotify/basic-pitch": "^1.0.1"
+  }
+}

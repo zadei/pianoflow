@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PianoFlow</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Upload Screen -->
+        <div id="upload-screen" class="screen active">
+            <h1>PianoFlow</h1>
+            <p class="subtitle">Upload sheet music and play along</p>
+            <div id="drop-zone">
+                <div class="drop-content">
+                    <span class="drop-icon">&#9835;</span>
+                    <p>Drop sheet music here</p>
+                    <p class="drop-hint">MusicXML (.xml/.mxl) — instant &nbsp;|&nbsp; JPG/PNG/PDF — requires Java 17+</p>
+                    <button id="browse-btn">Browse Files</button>
+                    <button id="demo-btn" style="margin-top:8px;padding:8px 20px;background:transparent;color:#d4a017;border:1px solid #d4a017;border-radius:6px;font-size:0.9rem;cursor:pointer;">Try Demo</button>
+                </div>
+                <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.pdf,.xml,.mxl,.musicxml" hidden>
+            </div>
+            <div id="upload-status" class="hidden">
+                <div class="spinner"></div>
+                <p id="status-text">Processing...</p>
+            </div>
+            <div id="upload-error" class="hidden">
+                <p id="error-text"></p>
+                <button id="retry-btn">Try Again</button>
+            </div>
+            <div id="library-section" class="hidden">
+                <h2 class="library-title">Recent Pieces</h2>
+                <ul id="library-list"></ul>
+            </div>
+        </div>
+
+        <!-- Player Screen -->
+        <div id="player-screen" class="screen">
+            <div id="controls">
+                <button id="back-btn" title="Back to upload">&larr;</button>
+                <button id="play-btn" title="Play/Pause">&#9654;</button>
+                <div class="control-group">
+                    <label for="tempo-slider">Tempo</label>
+                    <input type="range" id="tempo-slider" min="0.25" max="2.0" step="0.05" value="1.0">
+                    <span id="tempo-display">1.0x (120 BPM)</span>
+                </div>
+                <div class="control-group">
+                    <label for="pause-mode">Pause Mode</label>
+                    <input type="checkbox" id="pause-mode">
+                </div>
+                <div class="control-group">
+                    <label for="practice-mode">Practice</label>
+                    <input type="checkbox" id="practice-mode">
+                </div>
+                <div class="control-group" id="loop-controls" style="display:none;">
+                    <label>Loop</label>
+                    <input type="checkbox" id="loop-enabled" title="Loop bars on repeat">
+                    <span id="loop-range-inputs" style="display:none;align-items:center;gap:4px;">
+                        <label for="loop-start-bar" style="font-size:0.78rem;">Bar</label>
+                        <input type="number" id="loop-start-bar" min="1" value="1" style="width:44px;background:#1a1a2e;color:#e0d7c8;border:1px solid #3a3a5c;border-radius:4px;padding:2px 4px;font-size:0.8rem;">
+                        <span style="font-size:0.78rem;">to</span>
+                        <input type="number" id="loop-end-bar" min="1" value="4" style="width:44px;background:#1a1a2e;color:#e0d7c8;border:1px solid #3a3a5c;border-radius:4px;padding:2px 4px;font-size:0.8rem;">
+                    </span>
+                </div>
+                <div class="control-group">
+                    <label for="metronome-toggle">Metro</label>
+                    <input type="checkbox" id="metronome-toggle">
+                </div>
+                <button id="mic-btn" title="Toggle microphone">&#127908;</button>
+                <button id="listen-btn" title="Listen to piece">&#9835;</button>
+                <div id="streak-display">
+                    Streak: <span id="streak-count">0</span>
+                    &nbsp;|&nbsp;
+                    Acc: <span id="accuracy-display">--%</span>
+                </div>
+            </div>
+            <div id="scrubber-bar">
+                <div id="scrubber-fill"></div>
+                <div id="scrubber-handle"></div>
+            </div>
+            <canvas id="game-canvas"></canvas>
+        </div>
+    </div>
+
+    <script src="/js/synth.js" defer></script>
+    <script src="/js/particles.js" defer></script>
+    <script src="/js/renderer.js" defer></script>
+    <script src="/js/audio.js" defer></script>
+    <script src="/js/pitch.js" defer></script>
+    <script src="/js/app.js" defer></script>
+</body>
+</html>

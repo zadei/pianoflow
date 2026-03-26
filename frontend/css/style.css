@@ -1,0 +1,328 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+}
+
+#app {
+    width: 100%;
+    height: 100%;
+}
+
+.screen {
+    display: none;
+    width: 100%;
+    height: 100%;
+}
+
+.screen.active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Upload Screen */
+#upload-screen {
+    gap: 20px;
+}
+
+#upload-screen h1 {
+    font-size: 3rem;
+    color: #d4a017;
+    letter-spacing: 2px;
+}
+
+.subtitle {
+    color: #888;
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+}
+
+#drop-zone {
+    width: 400px;
+    height: 250px;
+    border: 2px dashed #444;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+#drop-zone:hover,
+#drop-zone.drag-over {
+    border-color: #d4a017;
+    background: rgba(212, 160, 23, 0.05);
+}
+
+.drop-content {
+    text-align: center;
+}
+
+.drop-icon {
+    font-size: 3rem;
+    color: #d4a017;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.drop-hint {
+    color: #666;
+    font-size: 0.85rem;
+    margin-top: 5px;
+}
+
+#browse-btn, #retry-btn {
+    margin-top: 15px;
+    padding: 10px 24px;
+    background: #d4a017;
+    color: #0a0a0f;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+#browse-btn:hover, #retry-btn:hover {
+    background: #e8b830;
+}
+
+/* Upload Status */
+#upload-status {
+    text-align: center;
+}
+
+.spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid #333;
+    border-top-color: #d4a017;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 10px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Upload Error */
+#upload-error {
+    text-align: center;
+    color: #e05050;
+}
+
+/* Library */
+#upload-screen {
+    overflow-y: auto;
+    justify-content: flex-start;
+    padding: 40px 20px;
+}
+
+#library-section {
+    width: 400px;
+    margin-top: 8px;
+}
+
+.library-title {
+    font-size: 0.85rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+#library-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.library-item {
+    display: flex;
+    align-items: center;
+    background: #111118;
+    border: 1px solid #222;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    gap: 10px;
+}
+
+.library-item:hover {
+    border-color: #d4a017;
+}
+
+.library-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.library-item-name {
+    font-size: 0.9rem;
+    color: #e0e0e0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.library-item-meta {
+    font-size: 0.75rem;
+    color: #555;
+    margin-top: 2px;
+}
+
+.library-item-delete {
+    background: none;
+    border: none;
+    color: #444;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 2px 4px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    transition: color 0.2s;
+}
+
+.library-item-delete:hover {
+    color: #e05050;
+}
+
+/* Player Screen */
+#player-screen {
+    flex-direction: column;
+}
+
+#player-screen.active {
+    display: flex;
+}
+
+#controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 16px;
+    background: #111118;
+    border-bottom: 1px solid #222;
+    flex-shrink: 0;
+    height: 48px;
+}
+
+#controls button {
+    background: none;
+    border: 1px solid #444;
+    color: #e0e0e0;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+#controls button:hover {
+    border-color: #d4a017;
+}
+
+#controls button.active {
+    border-color: #d4a017;
+    color: #d4a017;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #999;
+}
+
+.control-group label {
+    white-space: nowrap;
+}
+
+#tempo-slider {
+    width: 100px;
+    accent-color: #d4a017;
+}
+
+#tempo-display {
+    font-size: 0.8rem;
+    color: #d4a017;
+    min-width: 100px;
+}
+
+#pause-mode {
+    accent-color: #d4a017;
+}
+
+#streak-display {
+    margin-left: auto;
+    font-size: 0.9rem;
+    color: #d4a017;
+    font-weight: 600;
+}
+
+/* Scrubber bar */
+#scrubber-bar {
+    height: 6px;
+    width: 100%;
+    background: #1a1a22;
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+#scrubber-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0%;
+    background: #d4a017;
+    pointer-events: none;
+}
+
+#scrubber-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #d4a017;
+    border-radius: 50%;
+    top: -3px;
+    left: 0%;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+/* Practice mode hint overlay */
+#practice-hint {
+    position: absolute;
+    pointer-events: none;
+    z-index: 10;
+}
+
+#game-canvas {
+    flex: 1;
+    width: 100%;
+    display: block;
+}
