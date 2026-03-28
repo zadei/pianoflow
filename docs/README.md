@@ -14,6 +14,8 @@ A piano learning app for acoustic piano players — no MIDI required. Upload she
 - **Tempo control** — 0.25×–2.0× speed slider
 - **Visual feedback** — glow + particle burst on hits; subtle dim on misses
 - **Async OCR** — sheet music processing runs in the background (Audiveris can take 30+ seconds on complex scores)
+- **Playback** — Audio playback of sheet music
+- **MIDI Support** - Supports Midi I/O for perfect note detection
 
 ---
 
@@ -148,9 +150,6 @@ piano/
 
 This is a v1 focused on solo acoustic piano practice. The following are explicitly out of scope:
 
-- MIDI input/output
 - Multi-instrument support
 - User accounts or progress persistence
 - Mobile support
-- Audio playback of the sheet music
-- Polyphonic chord detection — v1 is monophonic; play chords as arpeggios
