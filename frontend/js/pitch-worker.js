@@ -36,6 +36,7 @@ const OUTPUT_NAMES = {
 let model = null;
 let modelReady = false;
 let processing = false;
+let pendingFrame = null; // queue latest frame instead of dropping it
 
 // --- Model loading ---
 
@@ -213,7 +214,13 @@ function extractActiveNotes(frames, onsets, onsetThresh, frameThresh) {
 // --- Frame processing ---
 
 async function processFrame(frame, frameSampleRate) {
-    if (!modelReady || !model || processing) return;
+    if (!modelReady || !model) return;
+
+    // If already processing, queue this frame (keep only the latest)
+    if (processing) {
+        pendingFrame = { frame, frameSampleRate };
+        return;
+    }
 
     processing = true;
     try {
@@ -231,6 +238,13 @@ async function processFrame(frame, frameSampleRate) {
         self.postMessage({ type: 'error', message: 'Inference failed: ' + err.message });
     } finally {
         processing = false;
+
+        // Process the queued frame if one arrived during inference
+        if (pendingFrame) {
+            const { frame: pf, frameSampleRate: psr } = pendingFrame;
+            pendingFrame = null;
+            processFrame(pf, psr);
+        }
     }
 }
 

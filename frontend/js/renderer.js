@@ -355,14 +355,15 @@ class Renderer {
             const octave = parseInt(match[3], 10);
             const midi = (octave + 1) * 12 + base + acc;
             const x = this._noteX(midi);
-            xs.push({ x, pitch: note.pitch, alreadyHit });
+            const noteColor = note.staff === 2 ? this.NOTE_COLORS.bass : this.NOTE_COLORS.treble;
+            xs.push({ x, pitch: note.pitch, alreadyHit, noteColor });
 
             // Pulsing ring around each key
             ctx.save();
             ctx.globalAlpha = alreadyHit ? 0.25 : ringAlpha;
-            ctx.strokeStyle = alreadyHit ? '#4caf50' : '#d4a017';
+            ctx.strokeStyle = alreadyHit ? '#4caf50' : noteColor;
             ctx.lineWidth = 3;
-            ctx.shadowColor = alreadyHit ? '#4caf50' : '#d4a017';
+            ctx.shadowColor = alreadyHit ? '#4caf50' : noteColor;
             ctx.shadowBlur = 12;
             ctx.beginPath();
             ctx.arc(x, this.hitLineY + 12, ringR, 0, Math.PI * 2);
@@ -376,7 +377,9 @@ class Renderer {
         const label = xs.map(e => e.pitch).join(' + ');
         ctx.save();
         ctx.font = `bold ${xs.length > 1 ? '32' : '48'}px -apple-system, sans-serif`;
-        ctx.fillStyle = '#d4a017';
+        // Use the color of the first unhit note, or first note if all hit
+        const labelEntry = xs.find(e => !e.alreadyHit) || xs[0];
+        ctx.fillStyle = labelEntry ? labelEntry.noteColor : '#d4a017';
         ctx.globalAlpha = 0.92;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';

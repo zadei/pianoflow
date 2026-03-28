@@ -16,6 +16,84 @@ class AudioManager {
         this._bpWorker = null;
         this._bpReady = false;
         this.onNotes = null; // callback: (midiNotes: number[]) => void
+
+        // Web MIDI keyboard input
+        this._midiAccess = null;
+        this._midiActiveNotes = new Set(); // currently held MIDI note numbers
+        this.onMidiNotes = null; // callback: (midiNotes: number[]) => void
+        this.midiConnected = false;
+    }
+
+    /**
+     * Initialize Web MIDI API to receive input from connected MIDI keyboards.
+     * MIDI gives instant, perfect multi-note detection — no ML latency.
+     * @returns {Promise<boolean>} true if MIDI access granted and inputs found
+     */
+    async initMidi() {
+        if (!navigator.requestMIDIAccess) {
+            console.log('[MIDI] Web MIDI API not supported in this browser');
+            return false;
+        }
+        try {
+            this._midiAccess = await navigator.requestMIDIAccess();
+            this._bindMidiInputs();
+            // Re-bind when devices are plugged in/out
+            this._midiAccess.onstatechange = () => this._bindMidiInputs();
+            return this.midiConnected;
+        } catch (err) {
+            console.warn('[MIDI] Access denied or unavailable:', err.message);
+            return false;
+        }
+    }
+
+    /**
+     * Bind event listeners to all available MIDI input ports.
+     */
+    _bindMidiInputs() {
+        if (!this._midiAccess) return;
+        let found = false;
+        for (const input of this._midiAccess.inputs.values()) {
+            input.onmidimessage = (e) => this._handleMidiMessage(e);
+            found = true;
+            console.log(`[MIDI] Connected: ${input.name}`);
+        }
+        this.midiConnected = found;
+    }
+
+    /**
+     * Handle a raw MIDI message — track noteOn/noteOff and emit active notes.
+     */
+    _handleMidiMessage(event) {
+        const [status, note, velocity] = event.data;
+        const command = status & 0xf0;
+
+        if (command === 0x90 && velocity > 0) {
+            // noteOn
+            this._midiActiveNotes.add(note);
+        } else if (command === 0x80 || (command === 0x90 && velocity === 0)) {
+            // noteOff
+            this._midiActiveNotes.delete(note);
+        } else {
+            return; // ignore other messages (CC, pitch bend, etc.)
+        }
+
+        // Emit current set of held notes
+        if (this.onMidiNotes) {
+            this.onMidiNotes(Array.from(this._midiActiveNotes).sort((a, b) => a - b));
+        }
+    }
+
+    /**
+     * Stop MIDI input listeners.
+     */
+    stopMidi() {
+        if (this._midiAccess) {
+            for (const input of this._midiAccess.inputs.values()) {
+                input.onmidimessage = null;
+            }
+        }
+        this._midiActiveNotes.clear();
+        this.midiConnected = false;
     }
 
     /**
@@ -264,6 +342,7 @@ class AudioManager {
     stop() {
         this.active = false;
         this.stopBasicPitch();
+        this.stopMidi();
         if (this.stream) {
             this.stream.getTracks().forEach(t => t.stop());
             this.stream = null;

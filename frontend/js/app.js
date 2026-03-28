@@ -76,6 +76,16 @@
     // Stores the latest set of MIDI notes detected by the ML model.
     let detectedPolyNotes = [];
 
+    // --- Web MIDI keyboard notes ---
+    // Stores notes currently held on a connected MIDI keyboard.
+    let midiKeyboardNotes = [];
+
+    // --- Note Accumulator ---
+    // Buffers detected notes over a short window so that YIN, Basic Pitch,
+    // and MIDI results can combine across frames for reliable chord detection.
+    const NOTE_ACCUMULATOR_MS = 120; // time window to accumulate notes
+    const noteAccumulator = new Map(); // midi_number → timestamp of last detection
+
     /**
      * Called by the Basic Pitch pipeline whenever new polyphonic notes
      * are detected from the microphone.
@@ -98,18 +108,8 @@
 
         if (!state.playing || !state.notes) return;
 
-        // Practice mode: match against the current frozen chord
+        // Practice mode: gameLoop handles all matching — just return here
         if (state.practiceMode && state.practiceTargetNotes && state.practiceTargetNotes.length > 0) {
-            for (const target of state.practiceTargetNotes) {
-                if (target._hit) continue;
-                if (midiNotes.includes(target.midi_number)) {
-                    target._hit = true;
-                    state.streak++;
-                    state.accuracy.hits++;
-                    renderer.triggerHit(target.midi_number, target.staff);
-                    audioMgr.playCorrectNote(target.midi_number);
-                }
-            }
             return;
         }
 
@@ -525,6 +525,8 @@
             micBtn.classList.remove('active');
             state.detectedMidi = -1;
             detectedPolyNotes = [];
+            midiKeyboardNotes = [];
+            noteAccumulator.clear();
         } else {
             const ok = await audioMgr.init();
             if (ok) {
@@ -536,6 +538,16 @@
                 const bpOk = await audioMgr.initBasicPitch();
                 if (!bpOk) {
                     console.warn('Basic Pitch unavailable, falling back to YIN only');
+                }
+
+                // Web MIDI keyboard — instant, perfect multi-note detection
+                audioMgr.onMidiNotes = (notes) => {
+                    midiKeyboardNotes = notes;
+                    handleDetectedNotes(notes);
+                };
+                const midiOk = await audioMgr.initMidi();
+                if (midiOk) {
+                    console.log('[PianoFlow] MIDI keyboard connected — chord detection active');
                 }
 
                 micActive = true;
@@ -576,9 +588,25 @@
                     state.practiceHintTimer += dt;
 
                     // Build the set of currently detected notes:
-                    // combine YIN monophonic + Basic Pitch polyphonic
+                    // combine YIN monophonic + Basic Pitch polyphonic + MIDI keyboard
+                    // + accumulated recent detections for reliable chord matching
+                    const now = performance.now();
                     const allDetected = new Set(detectedPolyNotes);
                     if (detectedMidi >= 0) allDetected.add(detectedMidi);
+                    for (const midi of midiKeyboardNotes) allDetected.add(midi);
+
+                    // Add notes from the accumulator (recently detected within window)
+                    for (const [midi, ts] of noteAccumulator) {
+                        if (now - ts <= NOTE_ACCUMULATOR_MS) {
+                            allDetected.add(midi);
+                        } else {
+                            noteAccumulator.delete(midi);
+                        }
+                    }
+                    // Feed current detections into accumulator
+                    for (const midi of allDetected) {
+                        noteAccumulator.set(midi, now);
+                    }
 
                     // Check if any detected note matches an unhit chord note
                     for (const midi of allDetected) {
@@ -594,18 +622,24 @@
 
                     // Unfreeze only when every note in the chord has been hit
                     if (chordNotes.every(n => n._hit)) {
-                        state.practiceTargetNotes = null;
                         state.practiceHintTimer = 0;
-                        state.pauseFrozen = false;
-                        // Snap beat forward so next chord is immediately ready
+                        noteAccumulator.clear();
+                        // Snap immediately to the next chord
                         const upcoming = getNextPracticeChord();
                         if (upcoming.length > 0) {
                             state.currentBeat = upcoming[0].start_beat - 0.05;
+                            state.practiceTargetNotes = upcoming;
+                            state.pauseFrozen = true;
                         } else {
-                            const lastNote = chordNotes[chordNotes.length - 1];
-                            state.currentBeat = Math.max(state.currentBeat, lastNote.start_beat + lastNote.duration_beats);
+                            // No more chords — unfreeze and let song finish
+                            state.practiceTargetNotes = null;
+                            state.pauseFrozen = false;
                         }
                     }
+                } else if (chordNotes.length > 0) {
+                    // Next chord exists but we haven't reached it — snap to it
+                    state.currentBeat = chordNotes[0].start_beat - 0.05;
+                    state.pauseFrozen = true;
                 } else {
                     state.practiceTargetNotes = null;
                     state.pauseFrozen = false;
@@ -614,9 +648,10 @@
                 // Pause mode: freeze if next note isn't played
                 const nextNote = getNextUnhitNote();
                 if (nextNote && state.currentBeat >= nextNote.start_beat - HIT_WINDOW_BEATS) {
-                    // Unfreeze if YIN OR Basic Pitch detected the target note
+                    // Unfreeze if YIN, Basic Pitch, or MIDI keyboard detected the target note
                     const noteDetected = detectedMidi === nextNote.midi_number ||
-                        detectedPolyNotes.includes(nextNote.midi_number);
+                        detectedPolyNotes.includes(nextNote.midi_number) ||
+                        midiKeyboardNotes.includes(nextNote.midi_number);
                     state.pauseFrozen = !noteDetected;
                 } else {
                     state.pauseFrozen = false;
@@ -677,7 +712,11 @@
                 matchNotes(detectedMidi);
                 // Also match any polyphonic notes not already caught by YIN
                 for (const midi of detectedPolyNotes) {
-                    if (midi !== detectedMidi) {
+                    if (midi !== detectedMidi) matchNotes(midi);
+                }
+                // Also match MIDI keyboard notes
+                for (const midi of midiKeyboardNotes) {
+                    if (midi !== detectedMidi && !detectedPolyNotes.includes(midi)) {
                         matchNotes(midi);
                     }
                 }
