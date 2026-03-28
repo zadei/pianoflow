@@ -29,6 +29,15 @@ class SynthPlayer {
         this.audioCtx = new AudioContext();
         this.playing = true;
 
+        // Compressor prevents clipping when many notes overlap (polyphonic sum > 1.0)
+        this._compressor = this.audioCtx.createDynamicsCompressor();
+        this._compressor.threshold.value = -12;
+        this._compressor.knee.value = 6;
+        this._compressor.ratio.value = 4;
+        this._compressor.attack.value = 0.003;
+        this._compressor.release.value = 0.1;
+        this._compressor.connect(this.audioCtx.destination);
+
         const beatsPerSec = (tempoBPM * tempoMultiplier) / 60;
         const now = this.audioCtx.currentTime;
         let lastEndSec = 0;
@@ -58,8 +67,10 @@ class SynthPlayer {
             gain.gain.setValueAtTime(0, startTime);
             gain.gain.linearRampToValueAtTime(0.28, startTime + 0.012);                    // attack
             gain.gain.exponentialRampToValueAtTime(0.08, startTime + 0.12);               // steeper decay
-            gain.gain.exponentialRampToValueAtTime(0.04, startTime + Math.max(0.15, durationSec - 0.06)); // sustain
-            gain.gain.linearRampToValueAtTime(0.0001, startTime + durationSec + 0.06);    // release
+            const releaseEnd = startTime + durationSec + 0.06;
+            const sustainEnd = Math.min(startTime + Math.max(0.15, durationSec - 0.06), releaseEnd - 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.04, sustainEnd);                      // sustain
+            gain.gain.linearRampToValueAtTime(0.0001, releaseEnd);                         // release
 
             // Gain envelope for 2nd harmonic — lower volume, decays faster
             const gain2 = this.audioCtx.createGain();
@@ -68,8 +79,8 @@ class SynthPlayer {
 
             osc1.connect(gain);
             osc2.connect(gain2);
-            gain.connect(this.audioCtx.destination);
-            gain2.connect(this.audioCtx.destination);
+            gain.connect(this._compressor);
+            gain2.connect(this._compressor);
 
             osc1.start(startTime); osc1.stop(startTime + durationSec + 0.1);
             osc2.start(startTime); osc2.stop(startTime + durationSec * 0.7);
