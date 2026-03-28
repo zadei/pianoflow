@@ -54,6 +54,7 @@
         practiceMode: false,
         practiceTargetNotes: null,
         practiceHintTimer: 0,
+        practiceExcludeNotes: null,
         accuracy: { hits: 0, misses: 0 },
         loopEnabled: false,
         loopStartBar: 1,
@@ -608,6 +609,14 @@
                         noteAccumulator.set(midi, now);
                     }
 
+                    // Exclude notes held over from the previous chord (require re-press for same note)
+                    if (state.practiceExcludeNotes) {
+                        for (const midi of [...state.practiceExcludeNotes]) {
+                            if (!allDetected.has(midi)) state.practiceExcludeNotes.delete(midi);
+                        }
+                        for (const midi of state.practiceExcludeNotes) allDetected.delete(midi);
+                    }
+
                     // Check if any detected note matches an unhit chord note
                     for (const midi of allDetected) {
                         const matchedNote = chordNotes.find(n => !n._hit && midi === n.midi_number);
@@ -624,6 +633,7 @@
                     if (chordNotes.every(n => n._hit)) {
                         state.practiceHintTimer = 0;
                         noteAccumulator.clear();
+                        state.practiceExcludeNotes = new Set(allDetected); // prevent held notes from auto-satisfying the next chord
                         // Snap immediately to the next chord
                         const upcoming = getNextPracticeChord();
                         if (upcoming.length > 0) {
